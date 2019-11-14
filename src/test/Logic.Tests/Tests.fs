@@ -50,6 +50,26 @@ let overlapTests =
 
       Expect.isFalse (Logic.overlapsWith request1 request2) "The requests don't overlap"
     }
+
+    test "Requests on 1 same day but AM/PM different should overlap" {
+      let request1 = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 10, 1); HalfDay = AM }
+        End = { Date = DateTime(2019, 10, 2); HalfDay = PM }
+      }
+
+      let request2 = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 10, 1); HalfDay = PM }
+        End = { Date = DateTime(2019, 10, 2); HalfDay = PM }
+      }
+
+      Expect.isTrue (Logic.overlapsWith request1 request2) "The requests overlap"
+    }
+
+    
   ]
 
 [<Tests>]
@@ -98,6 +118,22 @@ let cancelationTests =
       Given [ RequestCreated request ]
       |> ConnectedAs (Employee "jdoe")
       |> When (CancelRequest ("jdoe", request.RequestId))
-      |> Then (Ok [RequestCancelled request]) "The request should have been validated"
+      |> Then (Ok [RequestCancelled request]) "The request should have been cancelled"
+    }
+  ]
+
+[<Tests>]
+let askForCancelationTests =
+  testList "Ask for Cancelation tests" [
+    test "A request is asked to be cancelled" {
+      let request = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
+        End = { Date = DateTime(2019, 12, 27); HalfDay = PM } }
+      Given [ RequestCreated request ]
+      |> ConnectedAs (Employee "jdoe")
+      |> When (AskCancelRequest ("jdoe", request.RequestId))
+      |> Then (Ok [CancelRequestAsked request]) "The request should be asked to be cancelled"
     }
   ]

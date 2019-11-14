@@ -7,24 +7,28 @@ type Command =
     | RequestTimeOff of TimeOffRequest
     | ValidateRequest of UserId * Guid
     | CancelRequest of UserId * Guid
+    | AskCancelRequest of UserId * Guid
     with
     member this.UserId =
         match this with
         | RequestTimeOff request -> request.UserId
         | ValidateRequest (userId, _) -> userId
         | CancelRequest (userId, _) -> userId
+        | AskCancelRequest (userId, _) -> userId
 
 // And our events
 type RequestEvent =
     | RequestCreated of TimeOffRequest
     | RequestValidated of TimeOffRequest
     | RequestCancelled of TimeOffRequest
+    | CancelRequestAsked of TimeOffRequest
     with
     member this.Request =
         match this with
         | RequestCreated request -> request
         | RequestValidated request -> request
         | RequestCancelled request -> request
+        | CancelRequestAsked request -> request
 
 // We then define the state of the system,
 // and our 2 main functions `decide` and `evolve`
@@ -34,18 +38,21 @@ module Logic =
         | NotCreated
         | Cancelled of TimeOffRequest
         | PendingValidation of TimeOffRequest
+        | PendingCancellation of TimeOffRequest
         | Validated of TimeOffRequest with
         member this.Request =
             match this with
             | NotCreated -> invalidOp "Not created"
             | Cancelled request -> request
             | PendingValidation request
+            | PendingCancellation request
             | Validated request -> request
         member this.IsActive =
             match this with
             | NotCreated -> false
             | Cancelled _ -> false
             | PendingValidation _
+            | PendingCancellation _
             | Validated _ -> true
 
     type UserRequestsState = Map<Guid, RequestState>
@@ -55,6 +62,7 @@ module Logic =
         | RequestCreated request -> PendingValidation request
         | RequestValidated request -> Validated request
         | RequestCancelled request -> Cancelled request
+        | CancelRequestAsked request -> PendingCancellation request
 
     let evolveUserRequests (userRequests: UserRequestsState) (event: RequestEvent) =
         let requestState = defaultArg (Map.tryFind event.Request.RequestId userRequests) NotCreated
@@ -91,6 +99,13 @@ module Logic =
             Ok [RequestCancelled request]
         | _ ->
             Error "Request cannot be cancelled"
+
+    let askCancelRequest requestState = 
+        match requestState with
+        |PendingCancellation request ->
+            Ok [CancelRequestAsked request]
+        | _ ->
+            Error "You cannot ask for this request to be cancelled"
 
     let decide (userRequests: UserRequestsState) (user: User) (command: Command) =
         let relatedUserId = command.UserId
@@ -129,3 +144,7 @@ module Logic =
                     cancelRequest requestState
                 else
                     Error "Cannot cancel started or passed requests"
+            | AskCancelRequest (_, requestId) ->
+                let requestState = defaultArg (userRequests.TryFind requestId) NotCreated
+                askCancelRequest requestState
+                
