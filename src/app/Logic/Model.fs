@@ -95,14 +95,16 @@ module Logic =
     
     let cancelRequest requestState = 
         match requestState with
-        |PendingValidation request ->
+        | PendingValidation request ->
             Ok [RequestCancelled request]
         | _ ->
             Error "Request cannot be cancelled"
 
     let askCancelRequest requestState = 
         match requestState with
-        |PendingCancellation request ->
+        | Validated request ->
+            Ok [CancelRequestAsked request]
+        | PendingValidation request ->
             Ok [CancelRequestAsked request]
         | _ ->
             Error "You cannot ask for this request to be cancelled"
