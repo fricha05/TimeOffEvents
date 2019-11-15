@@ -147,3 +147,19 @@ let askForCancelationTests =
       |> Then (Ok [CancelRequestAsked request]) "The request should be pending for cancellation"
     }
   ]
+
+[<Tests>]
+let refusalTests =
+  testList "Refusal tests" [
+    test "A request is refused" {
+      let request = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
+        End = { Date = DateTime(2019, 12, 27); HalfDay = PM } }
+      Given [ RequestCreated request ]
+      |> ConnectedAs Manager
+      |> When (RefuseRequest ("jdoe", request.RequestId))
+      |> Then (Ok [RequestRefused request]) "The request should have been refused"
+    }
+  ]

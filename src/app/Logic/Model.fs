@@ -7,6 +7,7 @@ type Command =
     | RequestTimeOff of TimeOffRequest
     | ValidateRequest of UserId * Guid
     | CancelRequest of UserId * Guid
+    | RefuseRequest of UserId * Guid
     | AskCancelRequest of UserId * Guid
     with
     member this.UserId =
@@ -14,6 +15,7 @@ type Command =
         | RequestTimeOff request -> request.UserId
         | ValidateRequest (userId, _) -> userId
         | CancelRequest (userId, _) -> userId
+        | RefuseRequest (userId, _) -> userId
         | AskCancelRequest (userId, _) -> userId
 
 // And our events
@@ -21,6 +23,7 @@ type RequestEvent =
     | RequestCreated of TimeOffRequest
     | RequestValidated of TimeOffRequest
     | RequestCancelled of TimeOffRequest
+    | RequestRefused of TimeOffRequest
     | CancelRequestAsked of TimeOffRequest
     with
     member this.Request =
@@ -28,6 +31,7 @@ type RequestEvent =
         | RequestCreated request -> request
         | RequestValidated request -> request
         | RequestCancelled request -> request
+        | RequestRefused request -> request
         | CancelRequestAsked request -> request
 
 // We then define the state of the system,
@@ -38,6 +42,7 @@ module Logic =
         | NotCreated
         | Cancelled of TimeOffRequest
         | PendingValidation of TimeOffRequest
+        | Refused of TimeOffRequest
         | PendingCancellation of TimeOffRequest
         | Validated of TimeOffRequest with
         member this.Request =
@@ -45,6 +50,7 @@ module Logic =
             | NotCreated -> invalidOp "Not created"
             | Cancelled request -> request
             | PendingValidation request
+            | Refused request -> request
             | PendingCancellation request
             | Validated request -> request
         member this.IsActive =
@@ -52,6 +58,7 @@ module Logic =
             | NotCreated -> false
             | Cancelled _ -> false
             | PendingValidation _
+            | Refused _ -> false
             | PendingCancellation _
             | Validated _ -> true
 
@@ -62,6 +69,7 @@ module Logic =
         | RequestCreated request -> PendingValidation request
         | RequestValidated request -> Validated request
         | RequestCancelled request -> Cancelled request
+        | RequestRefused request -> Refused request
         | CancelRequestAsked request -> PendingCancellation request
 
     let evolveUserRequests (userRequests: UserRequestsState) (event: RequestEvent) =
@@ -99,6 +107,13 @@ module Logic =
             Ok [RequestCancelled request]
         | _ ->
             Error "Request cannot be cancelled"
+
+    let refuseRequest requestState =
+        match requestState with
+        | PendingValidation request ->
+            Ok [RequestRefused request]
+        | _ ->
+            Error "Request cannot be refused"        
 
     let askCancelRequest requestState = 
         match requestState with
@@ -146,6 +161,12 @@ module Logic =
                     cancelRequest requestState
                 else
                     Error "Cannot cancel started or passed requests"
+            | RefuseRequest (_, requestId) ->
+                if user <> Manager then
+                    Error "Unauthorized"
+                else
+                    let requestState = defaultArg (userRequests.TryFind requestId) NotCreated
+                    refuseRequest requestState
             | AskCancelRequest (_, requestId) ->
                 let requestState = defaultArg (userRequests.TryFind requestId) NotCreated
                 askCancelRequest requestState
