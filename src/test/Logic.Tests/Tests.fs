@@ -17,8 +17,6 @@ let Then expected message (events: RequestEvent list, user: User, command: Comma
     let result = Logic.decide userRequestsState user command
     Expect.equal result expected message
 
-open System
-
 [<Tests>]
 let overlapTests = 
   testList "Overlap tests" [
@@ -125,15 +123,27 @@ let cancelationTests =
 [<Tests>]
 let askForCancelationTests =
   testList "Ask for Cancelation tests" [
-    test "A request is asked to be cancelled" {
+    test "A validated request is asked to be cancelled" {
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
         Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
         End = { Date = DateTime(2019, 12, 27); HalfDay = PM } }
-      Given [ RequestCreated request ]
+      Given [ RequestCreated request; RequestValidated request ]
       |> ConnectedAs (Employee "jdoe")
       |> When (AskCancelRequest ("jdoe", request.RequestId))
-      |> Then (Ok [CancelRequestAsked request]) "The request should be asked to be cancelled"
+      |> Then (Ok [CancelRequestAsked request]) "The request should be pending for cancellation"
+    }
+
+    test "A pending request is asked to be cancelled" {
+      let request = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
+        End = { Date = DateTime(2019, 12, 27); HalfDay = PM } }
+      Given [ RequestCreated request]
+      |> ConnectedAs (Employee "jdoe")
+      |> When (AskCancelRequest ("jdoe", request.RequestId))
+      |> Then (Ok [CancelRequestAsked request]) "The request should be pending for cancellation"
     }
   ]
