@@ -310,3 +310,6 @@ $RECYCLE.BIN/
 *.lnk
 
 output.html
+
+#ionide shit
+.ionide/
