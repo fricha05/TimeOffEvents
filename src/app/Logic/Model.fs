@@ -91,11 +91,9 @@ module Logic =
         Seq.exists (overlapsWith request) otherRequests
 
     let createRequest activeUserRequests  request =
-        let date = DateProvider.DateTime
         if request |> overlapsWithAnyRequest activeUserRequests then
             Error "Overlapping request"
-        // This DateTime.Today must go away!
-        elif request.Start.Date <= date then
+        elif request.Start.Date <= DateProvider.DateTime then
             Error "The request starts in the past"
         else
             Ok [RequestCreated request]
@@ -137,7 +135,7 @@ module Logic =
             match command with
             | CancelRequest (_, requestId) ->
                 let requestState = (userRequests.Item requestId)
-                if (requestState.Request.Start.Date) > DateTime.Today then
+                if (requestState.Request.Start.Date) > DateProvider.DateTime then
                     cancelRequest requestState
                 else
                     Error "Cannot cancel started or passed requests"
@@ -163,7 +161,7 @@ module Logic =
                     validateRequest requestState
             | CancelRequest (_, requestId) ->
                 let requestState = (userRequests.Item requestId)
-                if (requestState.Request.Start.Date) > DateTime.Today then
+                if (requestState.Request.Start.Date) > DateProvider.DateTime then
                     cancelRequest requestState
                 else
                     Error "Cannot cancel started or passed requests"
