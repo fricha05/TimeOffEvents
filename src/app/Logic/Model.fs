@@ -2,6 +2,11 @@
 
 open System
 
+
+type DateProvider =
+    static member DateTime =
+        DateTime.Now
+
 // Then our commands
 type Command =
     | RequestTimeOff of TimeOffRequest
@@ -86,10 +91,11 @@ module Logic =
         Seq.exists (overlapsWith request) otherRequests
 
     let createRequest activeUserRequests  request =
+        let date = DateProvider.DateTime
         if request |> overlapsWithAnyRequest activeUserRequests then
             Error "Overlapping request"
         // This DateTime.Today must go away!
-        elif request.Start.Date <= DateTime.Today then
+        elif request.Start.Date <= date then
             Error "The request starts in the past"
         else
             Ok [RequestCreated request]
