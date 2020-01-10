@@ -174,4 +174,6 @@ module Logic =
             | AskCancelRequest (_, requestId) ->
                 let requestState = defaultArg (userRequests.TryFind requestId) NotCreated
                 askCancelRequest requestState
-                
+
+     let getTheoricalVacation (date : DateTime) : float =
+        float (date.Month - 1) * 2.5           
